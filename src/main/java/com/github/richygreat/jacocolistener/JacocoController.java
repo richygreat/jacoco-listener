@@ -2,14 +2,14 @@ package com.github.richygreat.jacocolistener;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.jacoco.agent.rt.IAgent;
 import org.jacoco.agent.rt.RT;
 import org.jacoco.core.data.ExecutionData;
-import org.jacoco.core.internal.analysis.ClassAnalyzer;
-import org.jacoco.core.internal.analysis.ClassCoverageImpl;
-import org.jacoco.core.internal.flow.ClassProbesAdapter;
 import org.jacoco.core.tools.ExecFileLoader;
 
 class JacocoController {
@@ -76,6 +76,27 @@ class JacocoController {
 
 			System.err.println("===================>" + sessionId);
 			for (ExecutionData ed : loader.getExecutionDataStore().getContents()) {
+				Stream<Boolean> stream = IntStream.range(0, ed.getProbes().length).mapToObj(idx -> ed.getProbes()[idx]);
+				List<Boolean> lsProbes = stream.collect(Collectors.toList());
+				lsProbes.remove(0);// Ignored class init so this can be triggered by any class
+				boolean methodExecuted = false;
+				for (Boolean probed : lsProbes) {
+					if (probed) {
+						methodExecuted = true;
+						break;
+					}
+				}
+				// We need a proper way to find the fields and methods using asm
+
+				if (!methodExecuted) {
+					continue;
+				}
+
+				/*
+				 * Below should be a list of packages which needs to be populated one time from
+				 * Judge. src/main/java packages should only be included. So rest call to judge
+				 * and then list check instead of name contains
+				 */
 				if (ed.getName().contains("com/github/richygreat/springbootsonar/service")) {
 					System.err.println(ed.getName() + "=" + ed.hasHits());
 				}
