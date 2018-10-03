@@ -1,9 +1,16 @@
 package com.github.richygreat.jacocolistener;
 
-import java.io.IOException;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.Arrays;
 
 import org.jacoco.agent.rt.IAgent;
 import org.jacoco.agent.rt.RT;
+import org.jacoco.core.data.ExecutionData;
+import org.jacoco.core.internal.analysis.ClassAnalyzer;
+import org.jacoco.core.internal.analysis.ClassCoverageImpl;
+import org.jacoco.core.internal.flow.ClassProbesAdapter;
+import org.jacoco.core.tools.ExecFileLoader;
 
 class JacocoController {
 
@@ -54,10 +61,29 @@ class JacocoController {
 	}
 
 	private void dump(String sessionId) {
+		if (sessionId == null || sessionId.trim().length() == 0) {
+			return;
+		}
 		agent.setSessionId(sessionId);
 		try {
-			agent.dump(true);
-		} catch (IOException e) {
+			File file = File.createTempFile("jacoc", "exec");
+			try (FileOutputStream fos = new FileOutputStream(file)) {
+				fos.write(agent.getExecutionData(true));
+				fos.flush();
+			}
+			ExecFileLoader loader = new ExecFileLoader();
+			loader.load(file);
+
+			System.err.println("===================>" + sessionId);
+			for (ExecutionData ed : loader.getExecutionDataStore().getContents()) {
+				if (ed.getName().contains("com/github/richygreat/springbootsonar/service")) {
+					System.err.println(ed.getName() + "=" + ed.hasHits());
+				}
+			}
+
+			file.delete();
+		} catch (Exception e) {
+			e.printStackTrace();
 			throw new JacocoControllerError(e);
 		}
 	}
